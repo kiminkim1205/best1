@@ -1,0 +1,5 @@
+streamlit
+# 만약 데이터 분석을 하신다면 아래 항목도 추가하세요
+pandas
+numpy
+matplotlib
