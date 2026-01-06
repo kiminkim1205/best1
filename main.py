@@ -1,49 +1,60 @@
 import streamlit as st
 import random
+import time
 
 # 페이지 설정
-st.set_page_config(page_title="업다운 숫자 맞추기", page_icon="🎮")
+st.set_page_config(page_title="가위바위보 챔피언!", page_icon="✊")
 
-# 제목과 설명
-st.title("🎮 숫자 맞추기 게임")
-st.write("1부터 100 사이의 숫자를 맞춰보세요!")
+st.title("✊✌️🖐️ 가위바위보 챔피언십")
+st.write("컴퓨터를 이기고 최다 연승 기록에 도전하세요!")
 
-# 게임 초기화 함수
-def init_game():
-    st.session_state.target_number = random.randint(1, 100)
-    st.session_state.attempts = 0
-    st.session_state.game_over = False
+# 세션 상태 초기화 (점수 및 기록 저장)
+if 'streak' not in st.session_state:
+    st.session_state.streak = 0
+if 'max_streak' not in st.session_state:
+    st.session_state.max_streak = 0
 
-# 세션 상태 초기화 (처음 접속 시)
-if 'target_number' not in st.session_state:
-    init_game()
-
-# 게임 UI
-with st.container():
-    guess = st.number_input("숫자를 입력하세요 (1~100)", min_value=1, max_value=100, key="guess_input")
+# 게임 함수
+def play_game(user_choice):
+    options = ["가위", "바위", "보"]
+    computer_choice = random.choice(options)
     
-    col1, col2 = st.columns(2)
+    st.write(f"### 당신: {user_choice} vs 컴퓨터: {computer_choice}")
     
-    with col1:
-        if st.button("정답 확인!") and not st.session_state.game_over:
-            st.session_state.attempts += 1
-            if guess < st.session_state.target_number:
-                st.warning("⬆️ UP! 더 큰 숫자예요.")
-            elif guess > st.session_state.target_number:
-                st.warning("⬇️ DOWN! 더 작은 숫자예요.")
-            else:
-                st.success(f"🎉 정답입니다! {st.session_state.attempts}번 만에 맞추셨네요!")
-                st.balloons()
-                st.session_state.game_over = True
-                
-    with col2:
-        if st.button("다시 시작하기"):
-            init_game()
-            st.rerun()
+    if user_choice == computer_choice:
+        st.info("🤔 비겼습니다!")
+    elif (user_choice == "가위" and computer_choice == "보") or \
+         (user_choice == "바위" and computer_choice == "가위") or \
+         (user_choice == "보" and computer_choice == "바위"):
+        st.session_state.streak += 1
+        if st.session_state.streak > st.session_state.max_streak:
+            st.session_state.max_streak = st.session_state.streak
+        st.success(f"🔥 이겼습니다! 현재 {st.session_state.streak}연승 중!")
+        st.balloons()
+    else:
+        st.error(f"💀 패배했습니다... 최종 기록: {st.session_state.streak}연승")
+        st.session_state.streak = 0
 
-# 점수판
+# 사용자 인터페이스 (버튼)
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    if st.button("✌️ 가위", use_container_width=True):
+        play_game("가위")
+with col2:
+    if st.button("✊ 바위", use_container_width=True):
+        play_game("바위")
+with col3:
+    if st.button("🖐️ 보", use_container_width=True):
+        play_game("보")
+
+# 점수판 레이아웃
 st.divider()
-st.sidebar.header("📊 현재 기록")
-st.sidebar.write(f"도전 횟수: {st.session_state.attempts}")
-if st.session_state.game_over:
-    st.sidebar.info("새 게임을 시작하려면 '다시 시작하기'를 누르세요!")
+c1, c2 = st.columns(2)
+c1.metric("현재 연승", f"{st.session_state.streak} 🔥")
+c2.metric("최고 기록", f"{st.session_state.max_streak} 🏆")
+
+if st.button("기록 초기화"):
+    st.session_state.streak = 0
+    st.session_state.max_streak = 0
+    st.rerun()
