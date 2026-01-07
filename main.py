@@ -1,60 +1,131 @@
-import streamlit as st
+import pygame
 import random
-import time
 
-# 페이지 설정
-st.set_page_config(page_title="가위바위보 챔피언!", page_icon="✊")
+# 초기화
+pygame.init()
 
-st.title("✊✌️🖐️ 가위바위보 챔피언십")
-st.write("컴퓨터를 이기고 최다 연승 기록에 도전하세요!")
+# 설정
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 400
+FPS = 60
 
-# 세션 상태 초기화 (점수 및 기록 저장)
-if 'streak' not in st.session_state:
-    st.session_state.streak = 0
-if 'max_streak' not in st.session_state:
-    st.session_state.max_streak = 0
+# 색상
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GRAY = (200, 200, 200)
 
-# 게임 함수
-def play_game(user_choice):
-    options = ["가위", "바위", "보"]
-    computer_choice = random.choice(options)
-    
-    st.write(f"### 당신: {user_choice} vs 컴퓨터: {computer_choice}")
-    
-    if user_choice == computer_choice:
-        st.info("🤔 비겼습니다!")
-    elif (user_choice == "가위" and computer_choice == "보") or \
-         (user_choice == "바위" and computer_choice == "가위") or \
-         (user_choice == "보" and computer_choice == "바위"):
-        st.session_state.streak += 1
-        if st.session_state.streak > st.session_state.max_streak:
-            st.session_state.max_streak = st.session_state.streak
-        st.success(f"🔥 이겼습니다! 현재 {st.session_state.streak}연승 중!")
-        st.balloons()
-    else:
-        st.error(f"💀 패배했습니다... 최종 기록: {st.session_state.streak}연승")
-        st.session_state.streak = 0
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Dino Game - Multi Page")
+clock = pygame.time.Clock()
 
-# 사용자 인터페이스 (버튼)
-col1, col2, col3 = st.columns(3)
+# 폰트 설정
+font = pygame.font.SysFont('malgungothic', 30)
+large_font = pygame.font.SysFont('malgungothic', 50)
 
-with col1:
-    if st.button("✌️ 가위", use_container_width=True):
-        play_game("가위")
-with col2:
-    if st.button("✊ 바위", use_container_width=True):
-        play_game("바위")
-with col3:
-    if st.button("🖐️ 보", use_container_width=True):
-        play_game("보")
+class Dino:
+    def __init__(self):
+        self.x = 50
+        self.y = 310
+        self.y_velocity = 0
+        self.is_jumping = False
 
-# 점수판 레이아웃
-st.divider()
-c1, c2 = st.columns(2)
-c1.metric("현재 연승", f"{st.session_state.streak} 🔥")
-c2.metric("최고 기록", f"{st.session_state.max_streak} 🏆")
+    def jump(self):
+        if not self.is_jumping:
+            self.y_velocity = -15
+            self.is_jumping = True
 
-if st.button("기록 초기화"):
-    st.session_state.streak = 0
-    st.session_state.max_streak = 0
-    st.rerun()
+    def update(self):
+        if self.is_jumping:
+            self.y += self.y_velocity
+            self.y_velocity += 0.8  # 중력
+            if self.y >= 310:
+                self.y = 310
+                self.is_jumping = False
+
+    def draw(self):
+        pygame.draw.rect(screen, BLACK, [self.x, self.y, 40, 40])
+
+class Obstacle:
+    def __init__(self):
+        self.x = SCREEN_WIDTH
+        self.y = 320
+        self.speed = 7
+
+    def update(self):
+        self.x -= self.speed
+
+    def draw(self):
+        pygame.draw.rect(screen, (255, 0, 0), [self.x, self.y, 20, 30])
+
+def main():
+    state = "START"  # START, PLAYING, GAMEOVER
+    dino = Dino()
+    obstacles = []
+    score = 0
+
+    running = True
+    while running:
+        screen.fill(WHITE)
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            
+            if event.type == pygame.KEYDOWN:
+                if state == "START" and event.key == pygame.K_SPACE:
+                    state = "PLAYING"
+                elif state == "PLAYING" and event.key == pygame.K_SPACE:
+                    dino.jump()
+                elif state == "GAMEOVER" and event.key == pygame.K_r:
+                    # 초기화 후 다시 시작
+                    state = "PLAYING"
+                    dino = Dino()
+                    obstacles = []
+                    score = 0
+
+        if state == "START":
+            msg = large_font.render("Press SPACE to Start", True, BLACK)
+            screen.blit(msg, (SCREEN_WIDTH//2 - 200, SCREEN_HEIGHT//2 - 50))
+
+        elif state == "PLAYING":
+            # 바닥선
+            pygame.draw.line(screen, BLACK, (0, 350), (SCREEN_WIDTH, 350), 2)
+            
+            dino.update()
+            dino.draw()
+
+            # 장애물 생성 및 관리
+            if random.randint(1, 60) == 1 and (not obstacles or obstacles[-1].x < 500):
+                obstacles.append(Obstacle())
+
+            for obs in obstacles[:]:
+                obs.update()
+                obs.draw()
+                
+                # 충돌 체크
+                dino_rect = pygame.Rect(dino.x, dino.y, 40, 40)
+                obs_rect = pygame.Rect(obs.x, obs.y, 20, 30)
+                if dino_rect.colliderect(obs_rect):
+                    state = "GAMEOVER"
+
+                if obs.x < -20:
+                    obstacles.remove(obs)
+                    score += 1
+
+            score_txt = font.render(f"Score: {score}", True, BLACK)
+            screen.blit(score_txt, (700, 20))
+
+        elif state == "GAMEOVER":
+            msg = large_font.render("GAME OVER", True, (255, 0, 0))
+            restart_msg = font.render("Press 'R' to Restart", True, BLACK)
+            screen.blit(msg, (SCREEN_WIDTH//2 - 120, SCREEN_HEIGHT//2 - 50))
+            screen.blit(restart_msg, (SCREEN_WIDTH//2 - 120, SCREEN_HEIGHT//2 + 20))
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
+
